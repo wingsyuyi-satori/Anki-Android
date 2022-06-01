@@ -55,8 +55,13 @@ android {
         // needed for upgrades to be offered correctly.
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
         versionCode=21600165
         versionName="2.16alpha65"
+=======
+        versionCode=21600152
+        versionName="2.16alpha52"
+>>>>>>> parent of 0721bd560 (Bumped version to 2.16alpha53)
 =======
         versionCode=21600152
         versionName="2.16alpha52"
