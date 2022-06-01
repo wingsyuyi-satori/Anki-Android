@@ -108,7 +108,7 @@ class DeckSpinnerSelection(
             deckNames.add(lineContent)
         }
         val noteDeckAdapter: ArrayAdapter<String?> = object : ArrayAdapter<String?>(context, R.layout.multiline_spinner_item, deckNames as List<String?>) {
-            override fun getDropDownView(position: Int, convertView: View, parent: ViewGroup): View {
+            override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View {
 
                 // Cast the drop down items (popup items) as text view
                 val tv = super.getDropDownView(position, convertView, parent) as TextView
@@ -131,11 +131,11 @@ class DeckSpinnerSelection(
      * @return All decks, except maybe default if it should be hidden.
      */
     private fun computeDropDownDecks(): List<Deck> {
-        val decks = collection.decks.allSorted().toMutableList()
+        val sortedDecks = collection.decks.allSorted().toMutableList()
         if (shouldHideDefaultDeck()) {
-            decks.removeIf { x: Deck -> x.getLong("id") == Consts.DEFAULT_DECK_ID }
+            sortedDecks.removeIf { x: Deck -> x.getLong("id") == Consts.DEFAULT_DECK_ID }
         }
-        return decks
+        return sortedDecks
     }
 
     fun setSpinnerListener() {
@@ -215,7 +215,7 @@ class DeckSpinnerSelection(
      */
     fun selectAllDecks(): Boolean {
         if (!showAllDecks) {
-            AnkiDroidApp.sendExceptionReport("selectAllDecks was called while `showAllDecks is false`", "DeckSpinnerSelection:selectAllDecks")
+            CrashReportService.sendExceptionReport("selectAllDecks was called while `showAllDecks is false`", "DeckSpinnerSelection:selectAllDecks")
             return false
         }
         spinner.setSelection(0)

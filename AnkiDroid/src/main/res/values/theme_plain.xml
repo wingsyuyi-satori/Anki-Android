@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="DuplicateCrowdInStrings">
     <color name="theme_plain_primary">#9E9E9E</color>
     <color name="theme_plain_primary_dark">#616161</color>
     <color name="theme_plain_primary_light">#F5F5F5</color>
@@ -47,6 +47,8 @@
         <item name="fab_pressed">#c8607d8b</item> <!-- 55 less opacity than fab_normal -->
         <!--Custom Tabs colors-->
         <item name="customTabNavBarColor">@color/material_grey_500</item>
+
+        <item name="currentDeckBackground">@drawable/item_background_selected</item>
     </style>
 
     <!-- Preferences screens -->

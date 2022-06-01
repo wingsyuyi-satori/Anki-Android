@@ -89,7 +89,35 @@ open class RobolectricTest : CollectionGetter {
             runTasksInBackground()
         }
 
-        RustBackendLoader.init()
+        // Allow an override for the testing library (allowing Robolectric to access the Rust backend)
+        // This allows M1 macs to access a .dylib built for arm64, despite it not existing in the .jar
+        val backendPath = System.getenv("ANKIDROID_BACKEND_PATH")
+        if (backendPath != null) {
+            if (BuildConfig.BACKEND_VERSION != System.getenv("ANKIDROID_BACKEND_VERSION")) {
+                throw java.lang.IllegalStateException(
+                    "AnkiDroid backend testing library requires an update.\n" +
+                        "Please update the library at '$backendPath' from https://github.com/ankidroid/Anki-Android-Backend/releases/ (v ${System.getenv("ANKIDROID_BACKEND_VERSION")})\n" +
+                        "And then set \$ANKIDROID_BACKEND_VERSION to ${BuildConfig.BACKEND_VERSION}\n" +
+                        "Error: \$ANKIDROID_BACKEND_VERSION: expected '${BuildConfig.BACKEND_VERSION}', got '${System.getenv("ANKIDROID_BACKEND_VERSION")}'"
+                )
+            }
+            // we're the right version, load the library from $ANKIDROID_BACKEND_PATH
+            RustBackendLoader.loadRsdroid(backendPath)
+        } else {
+            // default (no env variable): Extract the backend testing lib from the jar
+            try {
+                RustBackendLoader.init()
+            } catch (e: UnsatisfiedLinkError) {
+                if (e.message.toString().contains("arm64e")) {
+                    // Giving the commands to user to add the required env variables
+                    val exception = "Please download the arm64 dylib file from https://github.com/ankidroid/Anki-Android-Backend/releases/tag/${BuildConfig.BACKEND_VERSION} and add the following environment variables to your device by using following commands: \n" +
+                        "export ANKIDROID_BACKEND_PATH=\"{Path to the dylib file}\"\n" +
+                        "export ANKIDROID_BACKEND_VERSION=\"${BuildConfig.BACKEND_VERSION}\""
+                    throw IllegalStateException(exception, e)
+                }
+                throw e
+            }
+        }
 
         // If you want to see the Android logging (from Timber), you need to set it up here
         ShadowLog.stream = System.out
@@ -141,10 +169,10 @@ open class RobolectricTest : CollectionGetter {
 
         try {
             if (CollectionHelper.getInstance().colIsOpen()) {
-                CollectionHelper.getInstance().getCol(targetContext).getBackend().debugEnsureNoOpenPointers()
+                CollectionHelper.getInstance().getCol(targetContext).backend.debugEnsureNoOpenPointers()
             }
             // If you don't tear down the database you'll get unexpected IllegalStateExceptions related to connections
-            CollectionHelper.getInstance().closeCollection(false, "RoboelectricTest: End")
+            CollectionHelper.getInstance().closeCollection(false, "RobolectricTest: End")
         } catch (ex: BackendException) {
             if ("CollectionNotOpen".equals(ex.message)) {
                 Timber.w(ex, "Collection was already disposed - may have been a problem")
@@ -415,7 +443,7 @@ open class RobolectricTest : CollectionGetter {
 
     @Synchronized
     @Throws(InterruptedException::class)
-    protected fun <Progress, Result : Computation<*>?> waitFortask(task: TaskDelegate<Progress, Result>, timeoutMs: Int) {
+    protected fun <Progress, Result : Computation<*>?> waitForTask(task: TaskDelegateBase<Progress, Result>, timeoutMs: Int) {
         val completed = booleanArrayOf(false)
         val listener: TaskListener<Progress, Result> = object : TaskListener<Progress, Result>() {
             override fun onPreExecute() {}

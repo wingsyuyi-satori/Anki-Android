@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="UnusedResources">
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="UnusedResources,DuplicateCrowdInStrings">
 
     <!-- App themes
         These compat themes are just copies of the parent themes here, but some attributes are
@@ -43,7 +43,9 @@
         <item name="android:layout_gravity">center_vertical</item>
         <item name="android:singleLine">true</item>
     </style>
-    <style name="FooterButton" parent="FooterButtonBase"/>
+    <style name="FooterButton" parent="FooterButtonBase">
+        <item name="android:fontFamily">@string/font_fontFamily_medium</item>
+    </style>
 
     <style name="FooterButtonNextTime">
         <item name="android:layout_width">match_parent</item>
@@ -60,7 +62,9 @@
         <item name="android:textAllCaps">true</item>
         <item name="android:typeface">sans</item>
     </style>
-    <style name="FooterButtonEaseText" parent="FooterButtonEaseTextBase" />
+    <style name="FooterButtonEaseText" parent="FooterButtonEaseTextBase" >
+        <item name="android:fontFamily">@string/font_fontFamily_medium</item>
+    </style>
 
     <!-- Styles for each of the 4 answer buttons -->
     <!-- Ease text -->

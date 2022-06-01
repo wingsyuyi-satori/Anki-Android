@@ -22,7 +22,7 @@ package com.ichi2.anki.servicelayer
 import android.os.Bundle
 import androidx.annotation.CheckResult
 import androidx.annotation.VisibleForTesting
-import com.ichi2.anki.AnkiDroidApp
+import com.ichi2.anki.CrashReportService
 import com.ichi2.anki.FieldEditText
 import com.ichi2.anki.multimediacard.IMultimediaEditableNote
 import com.ichi2.anki.multimediacard.fields.*
@@ -90,7 +90,7 @@ object NoteService {
     }
 
     /**
-     * Updates the JsonNote field values from MultimediaEditableNote When both notes are using the same Model, it updaes
+     * Updates the JsonNote field values from MultimediaEditableNote When both notes are using the same Model, it updates
      * the destination field values with source values. If models are different it throws an Exception
      *
      * @param noteSrc
@@ -123,8 +123,6 @@ object NoteService {
             EFieldType.IMAGE -> tmpMediaPath = field.imagePath
             EFieldType.TEXT -> {
             }
-            else -> {
-            }
         }
         if (tmpMediaPath != null) {
             try {
@@ -148,7 +146,7 @@ object NoteService {
             } catch (mediaException: EmptyMediaException) {
                 // This shouldn't happen, but we're fine to ignore it if it does.
                 Timber.w(mediaException)
-                AnkiDroidApp.sendExceptionReport(mediaException, "noteService::importMediaToDirectory")
+                CrashReportService.sendExceptionReport(mediaException, "noteService::importMediaToDirectory")
             }
         }
     }

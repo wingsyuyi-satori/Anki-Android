@@ -19,20 +19,16 @@ import android.content.res.Resources
 import android.os.Message
 import com.ichi2.anki.AnkiDroidApp
 import com.ichi2.anki.analytics.AnalyticsDialogFragment
-import com.ichi2.utils.KotlinCleanup
 import timber.log.Timber
 
 abstract class AsyncDialogFragment : AnalyticsDialogFragment() {
     /* provide methods for text to show in notification bar when the DialogFragment
        can't be shown due to the host activity being in stopped state.
-       This can happen when the DialogFragment is shown from 
+       This can happen when the DialogFragment is shown from
        the onPostExecute() method of an AsyncTask */
-    @KotlinCleanup("convert these back to properties")
-    abstract fun getNotificationMessage(): String?
-    abstract fun getNotificationTitle(): String?
-    open fun getDialogHandlerMessage(): Message? {
-        return null
-    }
+    abstract val notificationMessage: String?
+    abstract val notificationTitle: String?
+    open val dialogHandlerMessage: Message? get() = null
 
     protected fun res(): Resources {
         return try {

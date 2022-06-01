@@ -67,6 +67,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Locale;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -284,7 +285,7 @@ public class SchedV2 extends AbstractSched {
      * Remove from filtered if required.
      * Remove the siblings for the queue for same day spacing
      * Bury siblings if required by the options
-     * Overriden
+     * Overridden
      *  */
     public void answerCard(@NonNull Card card, @Consts.BUTTON_TYPE int ease) {
         mCol.log();
@@ -390,7 +391,7 @@ public class SchedV2 extends AbstractSched {
 
     /**
      * Which of the three numbers shown in reviewer/overview should the card be counted. 0:new, 1:rev, 2: any kind of learning.
-     * Overidden: V1 does not have preview
+     * Overridden: V1 does not have preview
      */
     public Queue countIdx(@NonNull Card card) {
         switch (card.getQueue()) {
@@ -525,14 +526,16 @@ public class SchedV2 extends AbstractSched {
     }
 
     // Overridden
+    /**
+     * Return sorted list of all decks.*/
     public @Nullable List<DeckDueTreeNode> deckDueList(@Nullable CancelListener collectionTask) {
         _checkDay();
         mCol.getDecks().checkIntegrity();
-        List<Deck> decks = mCol.getDecks().allSorted();
-        HashMap<String, Integer[]> lims = HashUtil.HashMapInit(decks.size());
-        ArrayList<DeckDueTreeNode> deckNodes = new ArrayList<>(decks.size());
+        List<Deck> allDecksSorted = mCol.getDecks().allSorted();
+        HashMap<String, Integer[]> lims = HashUtil.HashMapInit(allDecksSorted.size());
+        ArrayList<DeckDueTreeNode> deckNodes = new ArrayList<>(allDecksSorted.size());
         Decks.Node childMap = mCol.getDecks().childMap();
-        for (Deck deck : decks) {
+        for (Deck deck : allDecksSorted) {
             if (isCancelled(collectionTask)) {
                 return null;
             }
@@ -569,67 +572,63 @@ public class SchedV2 extends AbstractSched {
      requires multiple database access by deck.  Ignoring this number
      lead to the creation of a tree more quickly.*/
     @Override
-    public @NonNull List<DeckTreeNode> quickDeckDueTree() {
+    public @NonNull List<TreeNode<DeckTreeNode>> quickDeckDueTree() {
         // Similar to deckDueTree, ignoring the numbers
 
-        List<Deck> decks = mCol.getDecks().allSorted();
         // Similar to deckDueList
-        ArrayList<DeckTreeNode> data = new ArrayList<>();
-        for (JSONObject deck : decks) {
+        ArrayList<DeckTreeNode> allDecksSorted = new ArrayList<>();
+        for (JSONObject deck : mCol.getDecks().allSorted()) {
             DeckTreeNode g = new DeckTreeNode(mCol, deck.getString("name"), deck.getLong("id"));
-            data.add(g);
+            allDecksSorted.add(g);
         }
         // End of the similar part.
 
-        return _groupChildren(data, false);
+        return _groupChildren(allDecksSorted, false);
     }
 
 
-    public @NonNull List<DeckDueTreeNode> deckDueTree() {
+    public @NonNull List<TreeNode<DeckDueTreeNode>> deckDueTree() {
         return deckDueTree(null);
     }
 
     @Nullable
-    public List<DeckDueTreeNode> deckDueTree(@Nullable CancelListener cancelListener) {
-        List<DeckDueTreeNode> deckDueTree = deckDueList(cancelListener);
-        if (deckDueTree == null) {
+    public List<TreeNode<DeckDueTreeNode>> deckDueTree(@Nullable CancelListener cancelListener) {
+        List<DeckDueTreeNode> allDecksSorted = deckDueList(cancelListener);
+        if (allDecksSorted == null) {
             return null;
         }
-        return _groupChildren(deckDueTree, true);
-    }
-
-    private @NonNull <T extends AbstractDeckTreeNode<T>> List<T> _groupChildren(@NonNull List<T> decks, boolean checkDone) {
-        // sort based on name's components
-        Collections.sort(decks);
-        // then run main function
-        return _groupChildrenMain(decks, checkDone);
-    }
-
-
-    protected @NonNull  <T extends AbstractDeckTreeNode<T>> List<T> _groupChildrenMain(@NonNull List<T> decks, boolean checkDone) {
-        return _groupChildrenMain(decks, 0, checkDone);
+        return _groupChildren(allDecksSorted, true);
     }
 
     /**
-        @return the tree structure of all decks from @descandants, starting
+     * @return the tree with `allDecksSorted` content.
+     * @param allDecksSorted the set of all decks of the collection. Sorted.
+     * @param checkDone Whether the set of deck was checked. If false, we can't assume all decks have parents
+     * and that there is no duplicate. Instead, we'll ignore problems.*/
+    protected @NonNull <T extends AbstractDeckTreeNode> List<TreeNode<T>> _groupChildren(@NonNull List<T> allDecksSorted, boolean checkDone) {
+        return _groupChildren(allDecksSorted, 0, checkDone);
+    }
+
+    /**
+        @return the tree structure of all decks from @descendants, starting
         at specified depth.
 
-        @param descendants a list of decks of dept at least depth, having all
+        @param sortedDescendants a list of decks of dept at least depth, having all
         the same first depth name elements, sorted in deck order.
         @param depth The depth of the tree we are creating
         @param checkDone whether the set of deck was checked. If
         false, we can't assume all decks have parents and that there
         is no duplicate. Instead, we'll ignore problems.
      */
-    protected @NonNull <T extends AbstractDeckTreeNode<T>> List<T> _groupChildrenMain(@NonNull List<T> descendants, int depth, boolean checkDone) {
-        List<T> children = new ArrayList<>();
+    protected @NonNull <T extends AbstractDeckTreeNode> List<TreeNode<T>> _groupChildren(@NonNull List<T> sortedDescendants, int depth, boolean checkDone) {
+        List<TreeNode<T>> sortedChildren = new ArrayList<>();
         // group and recurse
-        ListIterator<T> it = descendants.listIterator();
+        ListIterator<T> it = sortedDescendants.listIterator();
         while (it.hasNext()) {
             T child = it.next();
             String head = child.getDeckNameComponent(depth);
-            List<T> descendantsOfChild  = new ArrayList<>();
-            /* Compose the "children" node list. The children is a
+            List<T> sortedDescendantsOfChild  = new ArrayList<>();
+            /* Compose the "sortedChildren" node list. The sortedChildren is a
              * list of all the nodes that proceed the current one that
              * contain the same at depth `depth`, except for the
              * current one itself.  I.e., they are subdecks that stem
@@ -649,7 +648,7 @@ public class SchedV2 extends AbstractSched {
                         Timber.d("Deck %s (%d)'s is a duplicate name. Ignoring for quick display.", deck.getString("name"), descendantOfChild.getDid());
                         continue;
                     }
-                    descendantsOfChild.add(descendantOfChild);
+                    sortedDescendantsOfChild.add(descendantOfChild);
                 } else {
                     // We've iterated past this head, so step back in order to use this descendant as the
                     // head in the next iteration of the outer loop.
@@ -657,12 +656,19 @@ public class SchedV2 extends AbstractSched {
                     break;
                 }
             }
-            // the children_sDescendant set contains direct children_sDescendant but not the children_sDescendant of children_sDescendant...
-            List<T> childrenNode = _groupChildrenMain(descendantsOfChild, depth + 1, checkDone);
-            child.setChildren(childrenNode, "std".equals(getName()));
-            children.add(child);
+            // the childrenNode set contains direct child of `child`, but not
+            // any descendants of the children of `child`...
+            List<TreeNode<T>> childrenNode = _groupChildren(sortedDescendantsOfChild, depth + 1, checkDone);
+
+            // Add the child nodes, and process the addition
+            TreeNode<T> toAdd = new TreeNode<>(child);
+            toAdd.getChildren().addAll(childrenNode);
+            List<T> childValues = childrenNode.stream().map(TreeNode::getValue).collect(Collectors.toList());
+            child.processChildren(childValues, "std".equals(getName()));
+
+            sortedChildren.add(toAdd);
         }
-        return children;
+        return sortedChildren;
     }
 
 
@@ -928,7 +934,7 @@ public class SchedV2 extends AbstractSched {
         } else if (spread == Consts.NEW_CARDS_FIRST) {
             return true;
         } else if (mNewCardModulus != 0) {
-            // if the counter has not yet been resetted, this value is
+            // if the counter has not yet been reset, this value is
             // random. This will occur only for the first card of review.
             return (mReps != 0 && (mReps % mNewCardModulus == 0));
         } else {
@@ -985,7 +991,7 @@ public class SchedV2 extends AbstractSched {
 
     /**
      * Maximal number of new card still to see today in deck g. It's computed as:
-     * the number of new card to see by day according to the deck optinos
+     * the number of new card to see by day according to the deck options
      * minus the number of new cards seen today in deck d or a descendant
      * plus the number of extra new cards to see today in deck d, a parent or a descendant.
      *
@@ -1056,7 +1062,7 @@ public class SchedV2 extends AbstractSched {
     }
 
 
-    // Overriden: _updateLrnCutoff not called in V1
+    // Overridden: _updateLrnCutoff not called in V1
     protected void _resetLrn() {
         _resetLrnCount();
         _resetLrnQueue();
@@ -1103,7 +1109,7 @@ public class SchedV2 extends AbstractSched {
     }
 
 
-    // Overidden: no _maybeResetLrn in V1
+    // Overridden: no _maybeResetLrn in V1
     protected @Nullable Card _getLrnCard(boolean collapse) {
         _maybeResetLrn(collapse && mLrnCount == 0);
         if (_fillLrn()) {
@@ -1188,7 +1194,7 @@ public class SchedV2 extends AbstractSched {
     }
 
 
-    // Overriden
+    // Overridden
     protected void _answerLrnCard(@NonNull Card card, @Consts.BUTTON_TYPE int ease) {
         JSONObject conf = _lrnConf(card);
         @Consts.REVLOG_TYPE int type;
@@ -1345,7 +1351,7 @@ public class SchedV2 extends AbstractSched {
     }
 
 
-    // Overriden
+    // Overridden
     protected void _rescheduleAsRev(@NonNull Card card, @NonNull JSONObject conf, boolean early) {
         boolean lapse = (card.getType() == Consts.CARD_TYPE_REV || card.getType() == Consts.CARD_TYPE_RELEARNING);
         if (lapse) {
@@ -1369,7 +1375,7 @@ public class SchedV2 extends AbstractSched {
     }
 
 
-    // Overriden: V1 has type rev for relearinng
+    // Overridden: V1 has type rev for relearning
     protected int _startingLeft(@NonNull Card card) {
         JSONObject conf;
         if (card.getType() == Consts.CARD_TYPE_RELEARNING) {
@@ -1433,7 +1439,7 @@ public class SchedV2 extends AbstractSched {
 
 
     /** Reschedule a new card that's graduated for the first time.
-     * Overriden: V1 does not set type and queue*/
+     * Overridden: V1 does not set type and queue*/
     private void _rescheduleNew(@NonNull Card card, @NonNull JSONObject conf, boolean early) {
         card.setIvl(_graduatingIvl(card, conf, early));
         card.setDue(mToday + card.getIvl());
@@ -1471,7 +1477,7 @@ public class SchedV2 extends AbstractSched {
     }
 
 
-    // Overriden: uses left/1000 in V1
+    // Overridden: uses left/1000 in V1
     private int _lrnForDeck(long did) {
         try {
             int cnt = mCol.getDb().queryScalar(
@@ -1496,7 +1502,7 @@ public class SchedV2 extends AbstractSched {
 
     /**
      * Maximal number of rev card still to see today in current deck. It's computed as:
-     * the number of rev card to see by day according to the deck optinos
+     * the number of rev card to see by day according to the deck options
      * minus the number of rev cards seen today in this deck or a descendant
      * plus the number of extra cards to see today in this deck, a parent or a descendant.
      *
@@ -1510,7 +1516,7 @@ public class SchedV2 extends AbstractSched {
 
     /**
      * Maximal number of rev card still to see today in deck d. It's computed as:
-     * the number of rev card to see by day according to the deck optinos
+     * the number of rev card to see by day according to the deck options
      * minus the number of rev cards seen today in deck d or a descendant
      * plus the number of extra cards to see today in deck d, a parent or a descendant.
      *
@@ -1525,7 +1531,7 @@ public class SchedV2 extends AbstractSched {
 
     /**
      * Maximal number of rev card still to see today in deck d. It's computed as:
-     * the number of rev card to see by day according to the deck optinos
+     * the number of rev card to see by day according to the deck options
      * minus the number of rev cards seen today in deck d or a descendant
      * plus the number of extra cards to see today in deck d, a parent or a descendant.
      *
@@ -1562,7 +1568,7 @@ public class SchedV2 extends AbstractSched {
                                         mToday, lim);
     }
 
-    // Overriden: V1 uses _walkingCount
+    // Overridden: V1 uses _walkingCount
     protected void _resetRevCount() {
         _resetRevCount(null);
     }
@@ -1675,7 +1681,7 @@ public class SchedV2 extends AbstractSched {
     }
 
 
-    // Overriden
+    // Overridden
     protected int _rescheduleLapse(@NonNull Card card) {
         JSONObject conf = _lapseConf(card);
         card.setLapses(card.getLapses() + 1);
@@ -1812,7 +1818,7 @@ public class SchedV2 extends AbstractSched {
     }
 
 
-    // Overriden
+    // Overridden
     protected void _updateRevIvl(@NonNull Card card, @Consts.BUTTON_TYPE int ease) {
         card.setIvl(_nextRevIvl(card, ease, true));
     }
@@ -1898,7 +1904,7 @@ public class SchedV2 extends AbstractSched {
 
     /**
      * Whether the filtered deck is empty
-     * Overriden
+     * Overridden
      */
     private int _fillDyn(Deck deck) {
         int start = -100000;
@@ -1910,12 +1916,12 @@ public class SchedV2 extends AbstractSched {
             int limit = term.getInt(1);
             int order = term.getInt(2);
 
-            String orderlimit = _dynOrder(order, limit);
+            String orderLimit = _dynOrder(order, limit);
             if (!TextUtils.isEmpty(search.trim())) {
                 search = String.format(Locale.US, "(%s)", search);
             }
             search = String.format(Locale.US, "%s -is:suspended -is:buried -deck:filtered", search);
-            ids = mCol.findCards(search, new SortOrder.AfterSqlOrderBy(orderlimit));
+            ids = mCol.findCards(search, new SortOrder.AfterSqlOrderBy(orderLimit));
             if (ids.isEmpty()) {
                 return total;
             }
@@ -1933,7 +1939,7 @@ public class SchedV2 extends AbstractSched {
     }
 
 
-    // Overriden: other queue in V1
+    // Overridden: other queue in V1
     public void emptyDyn(long did, String lim) {
         if (lim == null) {
             lim = "did = " + did;
@@ -2171,7 +2177,7 @@ public class SchedV2 extends AbstractSched {
      * This function uses GregorianCalendar so as to be sensitive to leap years, daylight savings, etc.
      */
 
-    /* Overriden: other way to count time*/
+    /* Overridden: other way to count time*/
     @RustCleanup("remove timing == null check once JavaBackend is removed")
     public void _updateCutoff() {
         int oldToday = mToday == null ? 0 : mToday;
@@ -2361,7 +2367,7 @@ public class SchedV2 extends AbstractSched {
     /* not in upstream anki. As revDue and newDue, it's used to check
      * what to do when a deck is selected in deck picker. When this
      * method is called, we already know that no cards is due
-     * immedietly. It answers whether cards will be due later in the
+     * immediately. It answers whether cards will be due later in the
      * same deck. */
     public boolean hasCardsTodayAfterStudyAheadLimit() {
         return mCol.getDb().queryScalar(
@@ -2442,7 +2448,7 @@ public class SchedV2 extends AbstractSched {
     /**
      * Return the next interval for CARD, in seconds.
      */
-    // Overriden
+    // Overridden
     protected long nextIvl(@NonNull Card card, @Consts.BUTTON_TYPE int ease) {
         // preview mode?
         if (_previewingCard(card)) {
@@ -2474,7 +2480,7 @@ public class SchedV2 extends AbstractSched {
 
 
     // this isn't easily extracted from the learn code
-    // Overriden
+    // Overridden
     protected long _nextLrnIvl(@NonNull Card card, @Consts.BUTTON_TYPE int ease) {
         if (card.getQueue() == Consts.QUEUE_TYPE_NEW) {
             card.setLeft(_startingLeft(card));
@@ -2507,7 +2513,7 @@ public class SchedV2 extends AbstractSched {
      * learning and relearning cards may be seconds-based or day-based;
      * other types map directly to queues
      *
-     * Overriden: in V1, queue becomes type.
+     * Overridden: in V1, queue becomes type.
      */
     @NonNull
     protected String _restoreQueueSnippet() {
@@ -2564,13 +2570,13 @@ public class SchedV2 extends AbstractSched {
                 getTime().intTime(), mCol.usn());
     }
 
-    // Overriden. manual is false by default in V1
+    // Overridden. manual is false by default in V1
     public void buryCards(@NonNull long[] cids) {
         buryCards(cids, true);
     }
 
     @Override
-    // Overriden: V1 also remove from dyns and lrn
+    // Overridden: V1 also remove from dyns and lrn
     @VisibleForTesting
     public void buryCards(@NonNull long[] cids, boolean manual) {
         int queue = manual ? Consts.QUEUE_TYPE_MANUALLY_BURIED : Consts.QUEUE_TYPE_SIBLING_BURIED;
@@ -2582,7 +2588,7 @@ public class SchedV2 extends AbstractSched {
 
     /**
      * Unbury all buried cards in all decks
-     * Overriden: V1 change lastUnburied
+     * Overridden: V1 change lastUnburied
      */
     public void unburyCards() {
         mCol.log(mCol.getDb().queryLongList("select id from cards where " + queueIsBuriedSnippet()));
@@ -2771,11 +2777,11 @@ public class SchedV2 extends AbstractSched {
                     "SELECT min(due) FROM cards WHERE due >= ? AND type = " + Consts.CARD_TYPE_NEW + " AND id NOT IN " + scids,
                     start);
             if (low != 0) {
-                int shiftby = high - low + 1;
+                int shiftBy = high - low + 1;
                 mCol.getDb().execute(
                         "UPDATE cards SET mod = ?, usn = ?, due = due + ?"
                                 + " WHERE id NOT IN " + scids + " AND due >= ? AND type = " + Consts.CARD_TYPE_NEW,
-                        now, mCol.usn(), shiftby, low);
+                        now, mCol.usn(), shiftBy, low);
             }
         }
         // reorder cards
@@ -2904,7 +2910,7 @@ public class SchedV2 extends AbstractSched {
      * The methods below are not in LibAnki.
      * ***********************************************************
      */
-    // Overriden: In sched v1, a single type of burying exist
+    // Overridden: In sched v1, a single type of burying exist
     public boolean haveBuried(long did) {
         List<Long> all = new ArrayList<>(mCol.getDecks().children(did).values());
         all.add(did);

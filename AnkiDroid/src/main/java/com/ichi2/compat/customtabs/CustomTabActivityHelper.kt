@@ -23,7 +23,6 @@ import androidx.browser.customtabs.CustomTabsClient
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.browser.customtabs.CustomTabsServiceConnection
 import androidx.browser.customtabs.CustomTabsSession
-import com.ichi2.utils.KotlinCleanup
 import timber.log.Timber
 
 /**
@@ -63,15 +62,14 @@ class CustomTabActivityHelper : ServiceConnectionCallback {
 
     /**
      * Binds the Activity to the Custom Tabs Service.
-     * @param activity the activity to be binded to the service.
+     * @param activity the activity to be bound to the service.
      */
-    @KotlinCleanup("make activity nonnull")
-    fun bindCustomTabsService(activity: Activity?) {
+    fun bindCustomTabsService(activity: Activity) {
         if (mClient != null) return
         val packageName = CustomTabsHelper.getPackageNameToUse(activity) ?: return
         mConnection = ServiceConnection(this)
         try {
-            CustomTabsClient.bindCustomTabsService(activity!!, packageName, mConnection!!)
+            CustomTabsClient.bindCustomTabsService(activity, packageName, mConnection!!)
         } catch (e: SecurityException) {
             Timber.w(e, "CustomTabsService bind attempt failed, using fallback")
             disableCustomTabHandler()
@@ -129,8 +127,7 @@ class CustomTabActivityHelper : ServiceConnectionCallback {
          * @param activity The Activity that wants to open the Uri.
          * @param uri The uri to be opened by the fallback.
          */
-        @KotlinCleanup("make activity nonnull")
-        fun openUri(activity: Activity?, uri: Uri?)
+        fun openUri(activity: Activity, uri: Uri)
     }
 
     @get:CheckResult
@@ -142,19 +139,18 @@ class CustomTabActivityHelper : ServiceConnectionCallback {
         private var sCustomTabsFailed = false
 
         /**
-         * Opens the URL on a Custom Tab if possible. Otherwise fallsback to opening it on a WebView.
+         * Opens the URL on a Custom Tab if possible. Otherwise falls back to opening it on a WebView.
          *
          * @param activity The host activity.
          * @param customTabsIntent a CustomTabsIntent to be used if Custom Tabs is available.
          * @param uri the Uri to be opened.
          * @param fallback a CustomTabFallback to be used if Custom Tabs is not available.
          */
-        @KotlinCleanup("Consider nullability")
         @JvmStatic
         fun openCustomTab(
             activity: Activity,
-            customTabsIntent: CustomTabsIntent?,
-            uri: Uri?,
+            customTabsIntent: CustomTabsIntent,
+            uri: Uri,
             fallback: CustomTabFallback?
         ) {
             val packageName = CustomTabsHelper.getPackageNameToUse(activity)
@@ -168,8 +164,8 @@ class CustomTabActivityHelper : ServiceConnectionCallback {
                     Timber.e("A version of Chrome supporting custom tabs was not available, and the fallback was null")
                 }
             } else {
-                customTabsIntent!!.intent.setPackage(packageName)
-                customTabsIntent.launchUrl(activity, uri!!)
+                customTabsIntent.intent.setPackage(packageName)
+                customTabsIntent.launchUrl(activity, uri)
             }
         }
 

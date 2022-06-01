@@ -17,7 +17,10 @@ package com.ichi2.anki.multimediacard.fields
 
 import android.app.Activity
 import android.content.Intent
+import androidx.activity.result.ActivityResultRegistry
+import androidx.activity.result.contract.ActivityResultContract
 import androidx.annotation.CheckResult
+import androidx.core.app.ActivityOptionsCompat
 import com.ichi2.anki.R
 import com.ichi2.anki.multimediacard.activity.MultimediaEditFieldActivityTestBase
 import com.ichi2.testutils.AnkiAssert
@@ -31,20 +34,21 @@ import org.mockito.kotlin.whenever
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.shadows.ShadowToast
 import java.io.File
+import kotlin.test.fail
 
 @RunWith(RobolectricTestRunner::class)
 open class BasicImageFieldControllerTest : MultimediaEditFieldActivityTestBase() {
     @Test
     fun constructionWithoutDataGivesNoError() {
         val controller: IFieldController = validControllerNoImage
-        assertThat(controller, instanceOf(BasicImageFieldController::class.java))
+        assertThat("construction of image field without data should not give an error", controller, instanceOf(BasicImageFieldController::class.java))
     }
 
     @Test
     fun constructionWithDataSucceeds() {
         grantCameraPermission()
         val controller = getControllerForField(imageFieldWithData(), emptyNote, 0)
-        assertThat(controller, instanceOf(BasicImageFieldController::class.java))
+        assertThat("construction of image field with data should succeed", controller, instanceOf(BasicImageFieldController::class.java))
     }
 
     @Test
@@ -90,7 +94,17 @@ open class BasicImageFieldControllerTest : MultimediaEditFieldActivityTestBase()
     @Test
     fun invalidImageResultDoesNotCrashController() {
         val controller = validControllerNoImage
-        val activity = setupActivityMock(controller, controller.mActivity)
+        controller.registryToUse = object : ActivityResultRegistry() {
+            override fun <I, O> onLaunch(
+                requestCode: Int,
+                contract: ActivityResultContract<I, O>,
+                input: I,
+                options: ActivityOptionsCompat?
+            ) {
+                fail("Unexpected access to the activity result registry!")
+            }
+        }
+        val activity = setupActivityMock(controller, controller.getActivity())
         val mock = MockContentResolver.returningEmptyCursor()
         whenever(activity.contentResolver).thenReturn(mock)
 

@@ -37,7 +37,6 @@ import com.ichi2.libanki.utils.Time;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Vector;
 
@@ -56,8 +55,8 @@ public class Stats {
 
         public final int days;
         public final int descriptionId;
-        AxisType(int dayss, int descriptionId) {
-            this.days = dayss;
+        AxisType(int days, int descriptionId) {
+            this.days = days;
             this.descriptionId = descriptionId;
         }
     }
@@ -385,24 +384,24 @@ public class Stats {
         // Not in libanki
         StatsMetaInfo metaInfo = new StatsMetaInfo();
         metaInfo = new AdvancedStatistics().calculateDueAsMetaInfo(metaInfo, type, context, _limit());
-        if (metaInfo.isStatsCalculated()) {
-            mDynamicAxis = metaInfo.ismDynamicAxis();
-            mHasColoredCumulative = metaInfo.ismHasColoredCumulative();
-            mType = metaInfo.getmType();
-            mTitle = metaInfo.getmTitle();
-            mBackwards = metaInfo.ismBackwards();
-            mValueLabels = metaInfo.getmValueLabels();
-            mColors = metaInfo.getmColors();
-            mAxisTitles = metaInfo.getmAxisTitles();
-            mMaxCards = metaInfo.getmMaxCards();
-            mMaxElements = metaInfo.getmMaxElements();
-            mFirstElement = metaInfo.getmFirstElement();
-            mLastElement = metaInfo.getmLastElement();
-            mZeroIndex = metaInfo.getmZeroIndex();
-            mCumulative = metaInfo.getmCumulative();
-            mMcount = metaInfo.getmMcount();
-            mSeriesList = metaInfo.getmSeriesList();
-            return metaInfo.isDataAvailable();
+        if (metaInfo.isStatsCalculated) {
+            mDynamicAxis = metaInfo.dynamicAxis;
+            mHasColoredCumulative = metaInfo.hasColoredCumulative;
+            mType = metaInfo.type;
+            mTitle = metaInfo.title;
+            mBackwards = metaInfo.backwards;
+            mValueLabels = metaInfo.valueLabels;
+            mColors = metaInfo.colors;
+            mAxisTitles = metaInfo.axisTitles;
+            mMaxCards = metaInfo.maxCards;
+            mMaxElements = metaInfo.maxElements;
+            mFirstElement = metaInfo.firstElement;
+            mLastElement = metaInfo.lastElement;
+            mZeroIndex = metaInfo.zeroIndex;
+            mCumulative = metaInfo.cumulative;
+            mMcount = metaInfo.mcount;
+            mSeriesList = metaInfo.seriesList;
+            return metaInfo.isDataAvailable;
         } else {
             return calculateDue(type);
         }
@@ -503,7 +502,7 @@ public class Stats {
         mHasColoredCumulative = false;
         mCumulative = Stats.createCumulative(new double[][]{mSeriesList[0], mSeriesList[1]}, mZeroIndex);
         mMcount = mCumulative[1][mCumulative[1].length-1];
-        //some adjustments to not crash the chartbuilding with emtpy data
+        //some adjustments to not crash the chartbuilding with empty data
         if (mMaxElements == 0) {
             mMaxElements = 10;
         }
@@ -698,7 +697,7 @@ public class Stats {
             }
         }
 
-        //some adjustments to not crash the chartbuilding with emtpy data
+        //some adjustments to not crash the chartbuilding with empty data
         if (mMaxCards == 0) {
             mMaxCards = 10;
         }
@@ -836,7 +835,7 @@ public class Stats {
         mAverage = Utils.timeSpan(context, Math.round(avg * SECONDS_PER_DAY));
         mLongest = Utils.timeSpan(context, Math.round(max_ * SECONDS_PER_DAY));
 
-        //some adjustments to not crash the chartbuilding with emtpy data
+        //some adjustments to not crash the chartbuilding with empty data
         if (mMaxElements == 0) {
             mMaxElements = 10;
         }
@@ -958,7 +957,7 @@ public class Stats {
         mLastElement = mSeriesList[0][mSeriesList[0].length - 1];
         mMaxElements = (int) (maxHour - minHour);
 
-        //some adjustments to not crash the chartbuilding with emtpy data
+        //some adjustments to not crash the chartbuilding with empty data
         if (mMaxElements == 0) {
             mMaxElements = 10;
         }
@@ -1068,7 +1067,7 @@ public class Stats {
         mLastElement = mSeriesList[0][mSeriesList[0].length - 1];
         mMaxElements = (int) (maxHour - minHour);
 
-        //some adjustments to not crash the chartbuilding with emtpy data
+        //some adjustments to not crash the chartbuilding with empty data
         if (mMaxElements == 0) {
             mMaxElements = 10;
         }
@@ -1174,7 +1173,7 @@ public class Stats {
         } else {
             ease4repl = "ease";
         }
-        ArrayList<double[]> list = new ArrayList<>(3 * 4); // 3 thetypes * 4 eases
+        ArrayList<double[]> list = new ArrayList<>(3 * 4); // 3 types * 4 eases
         String query = "select (case " +
                 "                when type in (" + Consts.CARD_TYPE_NEW + "," + Consts.CARD_TYPE_REV + ") then 0 " +
                 "        when lastIvl < 21 then 1 " +

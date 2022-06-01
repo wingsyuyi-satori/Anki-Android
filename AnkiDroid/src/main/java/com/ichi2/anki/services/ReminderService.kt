@@ -136,12 +136,12 @@ class ReminderService : BroadcastReceiver() {
 
         // Avoid crashes if the deck option group is deleted while we
         // are working
-        if (col.db == null || col.decks.getConf(dConfId) == null) {
+        if (col.dbClosed || col.decks.getConf(dConfId) == null) {
             Timber.d("Deck option %s became unavailable while ReminderService was working. Ignoring", dConfId)
             return null
         }
         try {
-            val dues = col.sched.deckDueTree()
+            val dues = col.sched.deckDueTree().map { it.value }
             val decks: MutableList<DeckDueTreeNode> = ArrayList(dues.size)
             // This loop over top level deck only. No notification will ever occur for subdecks.
             for (node in dues) {

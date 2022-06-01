@@ -39,6 +39,7 @@ import com.ichi2.anki.UIUtils.showSnackbar
 import com.ichi2.anki.dialogs.customstudy.CustomStudyDialog
 import com.ichi2.anki.servicelayer.ComputeResult
 import com.ichi2.anki.servicelayer.UndoService.Undo
+import com.ichi2.annotations.NeedsTest
 import com.ichi2.async.CollectionTask.*
 import com.ichi2.async.TaskListener
 import com.ichi2.async.TaskManager
@@ -230,12 +231,11 @@ class StudyOptionsFragment : Fragment(), Toolbar.OnMenuItemClickListener {
     /**
      * Show the context menu for the custom study options
      */
-    @KotlinCleanup("give it a better name")
     private fun showCustomStudyContextMenu() {
         val ankiActivity = requireActivity() as AnkiActivity
-        val d = instantiate(ankiActivity, CustomStudyDialog::class.java)
-        d.withArguments(CustomStudyDialog.ContextMenuConfiguration.STANDARD, col!!.decks.selected())
-        ankiActivity.showDialogFragment(d)
+        val contextMenu = instantiate(ankiActivity, CustomStudyDialog::class.java)
+        contextMenu.withArguments(CustomStudyDialog.ContextMenuConfiguration.STANDARD, col!!.decks.selected())
+        ankiActivity.showDialogFragment(contextMenu)
     }
 
     fun setFragmentContentView(newView: View?) {
@@ -322,6 +322,7 @@ class StudyOptionsFragment : Fragment(), Toolbar.OnMenuItemClickListener {
 
     // This will allow a maximum of one recur in order to workaround database closes
     // caused by sync on startup where this might be running then have the collection close
+    @NeedsTest("test whether the navigationIcon and navigationOnClickListener are set properly")
     private fun configureToolbarInternal(recur: Boolean) {
         Timber.i("configureToolbarInternal()")
         try {
@@ -393,13 +394,13 @@ class StudyOptionsFragment : Fragment(), Toolbar.OnMenuItemClickListener {
         if (mToolbar != null) {
             configureToolbar() // FIXME we were crashing here because mToolbar is null #8913
         } else {
-            AnkiDroidApp.sendExceptionReport("mToolbar null after return from tablet review session? Issue 8913", "StudyOptionsFragment")
+            CrashReportService.sendExceptionReport("mToolbar null after return from tablet review session? Issue 8913", "StudyOptionsFragment")
         }
         if (result.resultCode == DeckPicker.RESULT_DB_ERROR || result.resultCode == DeckPicker.RESULT_MEDIA_EJECTED) {
             closeStudyOptions(result.resultCode)
             return@registerForActivityResult
         }
-        if (result.resultCode == Reviewer.RESULT_NO_MORE_CARDS) {
+        if (result.resultCode == AbstractFlashcardViewer.RESULT_NO_MORE_CARDS) {
             // If no more cards getting returned while counts > 0 (due to learn ahead limit) then show a snackbar
             if (col!!.sched.count() > 0 && mStudyOptionsView != null) {
                 val rootLayout = mStudyOptionsView!!.findViewById<View>(R.id.studyoptions_main)
@@ -525,7 +526,7 @@ class StudyOptionsFragment : Fragment(), Toolbar.OnMenuItemClickListener {
                         return
                     }
 
-                    // Reinitialize controls incase changed to filtered deck
+                    // Reinitialize controls in case changed to filtered deck
                     initAllContentViews(mStudyOptionsView!!)
                     // Set the deck name
                     val deck = col!!.decks.current()

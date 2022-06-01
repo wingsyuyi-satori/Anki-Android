@@ -18,10 +18,10 @@ package com.ichi2.libanki.importer
 
 import android.text.format.Formatter
 import com.fasterxml.jackson.core.JsonToken
-import com.ichi2.anki.AnkiDroidApp
 import com.ichi2.anki.AnkiSerialization.factory
 import com.ichi2.anki.BackupManager.Companion.removeDir
 import com.ichi2.anki.CollectionHelper
+import com.ichi2.anki.CrashReportService
 import com.ichi2.anki.R
 import com.ichi2.anki.exception.ImportExportException
 import com.ichi2.libanki.Collection
@@ -87,7 +87,7 @@ class AnkiPackageImporter(col: Collection?, file: String?) : Anki2Importer(col, 
                 colname = CollectionHelper.COLLECTION_FILENAME
             } catch (e: IOException) {
                 Timber.e(e, "Failed to unzip apkg.")
-                AnkiDroidApp.sendExceptionReport(e, "AnkiPackageImporter::run() - unzip")
+                CrashReportService.sendExceptionReport(e, "AnkiPackageImporter::run() - unzip")
                 mLog.add(res.getString(R.string.import_log_failed_unzip, e.localizedMessage))
                 return
             }
@@ -109,11 +109,11 @@ class AnkiPackageImporter(col: Collection?, file: String?) : Anki2Importer(col, 
             // we need the media dict in advance, and we'll need a map of fname ->
             // number to use during the import
             val mediaMapFile = File(tempDir, "media")
-            mNameToNum = HashMap() // Number of file in mediamMMapFile as json. Not knowable
+            mNameToNum = HashMap() // Number of file in mediaMapFile as json. Not knowable
             val dirPath = tmpCol.media.dir()
             val dir = File(dirPath)
             // We need the opposite mapping in AnkiDroid since our extraction method requires it.
-            val numToName: MutableMap<String, String> = HashMap() // Number of file in mediamMMapFile as json. Not knowable
+            val numToName: MutableMap<String, String> = HashMap() // Number of file in mediaMapFile as json. Not knowable
             try {
                 factory.createParser(mediaMapFile).use { jp ->
                     var name: String // v in anki

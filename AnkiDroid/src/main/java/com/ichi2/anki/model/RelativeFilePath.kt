@@ -18,6 +18,7 @@
 package com.ichi2.anki.model
 
 import java.io.File
+import java.nio.file.Path
 
 /**
  * A relative path, with the final component representing the filename.
@@ -42,11 +43,26 @@ class RelativeFilePath private constructor(
         return File(directory, fileName)
     }
 
+    /**
+     * Adds a directory named [directoryName] to the start of [path]
+     *
+     * This is unsafe as it does not check for directory escapes or invalid characters.
+     * Should only be supplied with constants
+     *
+     * Sample:
+     * ```
+     * "/foo/bar/baz.txt".unsafePrependDirectory("quz") = "/quz/foo/bar/baz.txt"
+     * ```
+     */
+    fun unsafePrependDirectory(directoryName: String): RelativeFilePath {
+        return RelativeFilePath(listOf(directoryName) + path, fileName)
+    }
+
     companion object {
 
         /**
          * Return the relative path from Folder [baseDir] to file [file]. If [file]
-         * is contained in [baseDir], return [null].
+         * is contained in [baseDir], return `null`.
          * Similar to [Path.relativize], but available in all APIs.
          */
         fun fromPaths(baseDir: Directory, file: DiskFile): RelativeFilePath? =
@@ -56,7 +72,7 @@ class RelativeFilePath private constructor(
 
         /**
          * Return the relative path from Folder [baseDir] to file [file]. If [file]
-         * is contained in [baseDir], return [null].
+         * is contained in [baseDir], return `null`.
          * Assumes that [file] is actually a file and [baseDir] a directory, hence distinct.
          * Similar to [Path.relativize], but available in all APIs.
          * @param baseDir A directory.

@@ -33,40 +33,27 @@ import kotlin.math.min
  * this field and use getNamePart(0) for those cases.
  */
 @KotlinCleanup("maybe possible to remove gettres for revCount/lrnCount")
-class DeckDueTreeNode(col: Collection?, name: String?, did: Long, private var revCount: Int, private var lrnCount: Int, private var newCount: Int) : AbstractDeckTreeNode<DeckDueTreeNode?>(col, name, did) {
+@KotlinCleanup("rename name -> fullDeckName")
+class DeckDueTreeNode(col: Collection, name: String, did: Long, override var revCount: Int, override var lrnCount: Int, override var newCount: Int) : AbstractDeckTreeNode(col, name, did) {
     override fun toString(): String {
         return String.format(
-            Locale.US, "%s, %d, %d, %d, %d, %s",
-            fullDeckName, did, revCount, lrnCount, newCount, children
+            Locale.US, "%s, %d, %d, %d, %d",
+            fullDeckName, did, revCount, lrnCount, newCount
         )
-    }
-
-    override fun getRevCount(): Int {
-        return revCount
     }
 
     private fun limitRevCount(limit: Int) {
         revCount = max(0, min(revCount, limit))
     }
 
-    override fun getNewCount(): Int {
-        return newCount
-    }
-
     private fun limitNewCount(limit: Int) {
         newCount = max(0, min(newCount, limit))
     }
 
-    override fun getLrnCount(): Int {
-        return lrnCount
-    }
-
-    @KotlinCleanup("non-null")
-    override fun setChildren(children: MutableList<DeckDueTreeNode?>, addRev: Boolean) {
-        super.setChildren(children, addRev)
+    override fun processChildren(children: List<AbstractDeckTreeNode>, addRev: Boolean) {
         // tally up children counts
         for (ch in children) {
-            lrnCount += ch!!.lrnCount
+            lrnCount += ch.lrnCount
             newCount += ch.newCount
             if (addRev) {
                 revCount += ch.revCount
@@ -84,8 +71,7 @@ class DeckDueTreeNode(col: Collection?, name: String?, did: Long, private var re
     }
 
     override fun hashCode(): Int {
-        val childrenHash = if (children == null) 0 else children.hashCode()
-        return fullDeckName.hashCode() + revCount + lrnCount + newCount + childrenHash
+        return fullDeckName.hashCode() + revCount + lrnCount + newCount
     }
 
     /**
@@ -100,11 +86,7 @@ class DeckDueTreeNode(col: Collection?, name: String?, did: Long, private var re
         return Decks.equalName(fullDeckName, other.fullDeckName) &&
             revCount == other.revCount &&
             lrnCount == other.lrnCount &&
-            newCount == other.newCount &&
-            (
-                children == other.children || // Would be the case if both are null, or the same pointer
-                    children.equals(other.children)
-                )
+            newCount == other.newCount
     }
 
     /** Line representing this string without its children. Used in timbers only.  */
@@ -121,18 +103,5 @@ class DeckDueTreeNode(col: Collection?, name: String?, did: Long, private var re
 
     override fun knownToHaveRep(): Boolean {
         return revCount > 0 || newCount > 0 || lrnCount > 0
-    }
-
-    private fun setChildrenSuper(children: MutableList<DeckDueTreeNode?>) {
-        super.setChildren(children, false)
-    }
-
-    override fun withChildren(children: MutableList<DeckDueTreeNode?>): DeckDueTreeNode {
-        val name = fullDeckName
-        val did = did
-        val node = DeckDueTreeNode(col, name, did, revCount, lrnCount, newCount)
-        // We've already calculated the counts, don't bother doing it again, just set the variable.
-        node.setChildrenSuper(children)
-        return node
     }
 }

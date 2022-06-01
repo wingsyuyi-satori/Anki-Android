@@ -134,7 +134,7 @@ class SharedDecksDownloadFragment : Fragment() {
      * the download progress checker.
      */
     private fun downloadFile(fileToBeDownloaded: DownloadFile) {
-        // Register broadcast receiver for download completion. 
+        // Register broadcast receiver for download completion.
         Timber.d("Registering broadcast receiver for download completion")
         activity?.registerReceiver(mOnComplete, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
 
@@ -183,7 +183,7 @@ class SharedDecksDownloadFragment : Fragment() {
             fun verifyDeckIsImportable() {
                 if (mFileName == null) {
                     // Send ACRA report
-                    AnkiDroidApp.sendExceptionReport(
+                    CrashReportService.sendExceptionReport(
                         "File name is null",
                         "SharedDecksDownloadFragment::verifyDeckIsImportable"
                     )
@@ -198,7 +198,7 @@ class SharedDecksDownloadFragment : Fragment() {
                             "Deck download might still be going on, when it completes then the method would be called again."
                     )
                     // Send ACRA report
-                    AnkiDroidApp.sendExceptionReport(
+                    CrashReportService.sendExceptionReport(
                         "Download ID does not match with the ID of the completed download",
                         "SharedDecksDownloadFragment::verifyDeckIsImportable"
                     )

@@ -25,6 +25,7 @@ import android.content.ContentValues;
 import android.text.TextUtils;
 
 import com.ichi2.anki.AnkiDroidApp;
+import com.ichi2.anki.CrashReportService;
 import com.ichi2.anki.exception.ConfirmModSchemaException;
 import com.ichi2.libanki.backend.exception.DeckRenameException;
 
@@ -35,6 +36,8 @@ import com.ichi2.utils.JSONObject;
 import com.ichi2.utils.SyncStatus;
 
 import net.ankiweb.rsdroid.RustCleanup;
+
+import org.intellij.lang.annotations.Language;
 
 import java.text.Normalizer;
 import java.util.ArrayList;
@@ -86,7 +89,7 @@ public class Decks extends DeckManager {
                 + "\"conf\": 1,"
                 + "\"usn\": 0,"
                 + "\"desc\": \"\","
-                + "\"dyn\": 0," // anki uses int/bool interchangably here
+                + "\"dyn\": 0," // anki uses int/bool interchangeably here
                 + "\"collapsed\": false,"
                 + "\"browserCollapsed\": false,"
                 // added in beta11
@@ -202,7 +205,7 @@ public class Decks extends DeckManager {
             }
             String foundName = deck.getString("name");
             if (!equalName(name, foundName)) {
-                AnkiDroidApp.sendExceptionReport("We looked for deck \"" + name + "\" and instead got deck \"" + foundName + "\".", "Decks - byName");
+                CrashReportService.sendExceptionReport("We looked for deck \"" + name + "\" and instead got deck \"" + foundName + "\".", "Decks - byName");
             }
             return deck;
         }
@@ -257,7 +260,7 @@ public class Decks extends DeckManager {
 
 
     @Override
-    public void load(@NonNull String decks, @NonNull String dconf) {
+    public void load(@NonNull @Language("JSON") String decks, @NonNull String dconf) {
         JSONObject decksarray = new JSONObject(decks);
         JSONArray ids = decksarray.names();
         mDecks = HashUtil.HashMapInit(decksarray.length());
@@ -695,6 +698,11 @@ public class Decks extends DeckManager {
         }
         for(int i = 0; i < path.length - 1; i++) {
             String p = path[i];
+            // Fix bugs in issue #11026
+            // Extra check if the parent name was blank when deck is created
+            if ("".equals(p)) {
+                p = "blank";
+            }
             if (TextUtils.isEmpty(s)) {
                 s += p;
             } else {
@@ -709,7 +717,8 @@ public class Decks extends DeckManager {
                 throw DeckRenameException.filteredAncestor(name, s);
             }
         }
-        name = s + "::" + path[path.length - 1];
+        String lastDeck = path[path.length - 1];
+        name = s + "::" + (lastDeck.isEmpty() ? "blank" : lastDeck);
         return name;
     }
 
@@ -932,10 +941,10 @@ public class Decks extends DeckManager {
     }
 
     private void _checkDeckTree() {
-        List<Deck> decks = allSorted();
-        Map<String, Deck> names = HashUtil.HashMapInit(decks.size());
+        List<Deck> sortedDecks = allSorted();
+        Map<String, Deck> names = HashUtil.HashMapInit(sortedDecks.size());
 
-        for (Deck deck: decks) {
+        for (Deck deck: sortedDecks) {
             String deckName = deck.getString("name");
 
             /* With 2.1.28, anki started strips whitespace of deck name.  This method paragraph is here for

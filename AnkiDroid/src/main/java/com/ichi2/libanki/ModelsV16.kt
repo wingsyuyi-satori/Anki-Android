@@ -371,7 +371,7 @@ class ModelsV16(col: Collection, backend: BackendV1) : ModelManager(col) {
     /** Mapping of field name : (ord, field). */
     fun fieldMap(m: NoteType): Map<str, Tuple<int, Field>> {
         return m.flds.jsonObjectIterable().map {
-            f ->
+                f ->
             Pair(f.getString("name"), Pair(f.getLong("ord"), f))
         }.toMap()
     }
@@ -534,7 +534,7 @@ class ModelsV16(col: Collection, backend: BackendV1) : ModelManager(col) {
         save(m)
     }
 
-    override fun change(m: NoteType, nid: Long, newModel: NoteType, fmap: Map<Int, Int>?, cmap: Map<Int, Int>?) {
+    override fun change(m: NoteType, nid: Long, newModel: NoteType, fmap: Map<Int, Int?>?, cmap: Map<Int, Int?>?) {
         change(m, listOf(nid), newModel, Optional.ofNullable(fmap), Optional.ofNullable(cmap))
     }
 
@@ -594,7 +594,7 @@ and notes.mid = ? and cards.ord = ?""",
                 }
                 flds = Array(flds.size) { "" }
                 newflds.forEach {
-                    (i, fld) ->
+                        (i, fld) ->
                     flds[i] = fld
                 }
                 val fldsAsString = joinFields(flds)

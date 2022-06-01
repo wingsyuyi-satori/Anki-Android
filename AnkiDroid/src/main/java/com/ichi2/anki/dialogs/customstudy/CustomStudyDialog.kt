@@ -35,7 +35,6 @@ import com.afollestad.materialdialogs.MaterialDialog
 import com.ichi2.anki.*
 import com.ichi2.anki.UIUtils.showThemedToast
 import com.ichi2.anki.analytics.AnalyticsDialogFragment
-import com.ichi2.anki.dialogs.ContextMenuHelper.getValuesFromKeys
 import com.ichi2.anki.dialogs.customstudy.CustomStudyDialog.ContextMenuConfiguration.*
 import com.ichi2.anki.dialogs.customstudy.CustomStudyDialog.ContextMenuOption.*
 import com.ichi2.anki.dialogs.tags.TagsDialog
@@ -50,6 +49,7 @@ import com.ichi2.libanki.backend.exception.DeckRenameException
 import com.ichi2.utils.HashUtil.HashMapInit
 import com.ichi2.utils.JSONArray
 import com.ichi2.utils.JSONObject
+import com.ichi2.utils.KotlinCleanup
 import timber.log.Timber
 import java.util.*
 
@@ -84,7 +84,7 @@ class CustomStudyDialog(private val collection: Collection, private val customSt
         val dialogId = requireArguments().getInt("id")
         return if (dialogId < 100) {
             // Select the specified deck
-            collection.decks?.select(requireArguments().getLong("did"))
+            collection.decks.select(requireArguments().getLong("did"))
             buildContextMenu(dialogId)
         } else {
             buildInputDialog(ContextMenuOption.fromInt(dialogId))
@@ -150,6 +150,15 @@ class CustomStudyDialog(private val collection: Collection, private val customSt
                     }
                 }
             }.build()
+    }
+
+    @KotlinCleanup("make this use enum instead of Int")
+    fun getValuesFromKeys(map: HashMap<Int, String>, keys: IntArray): Array<String?> {
+        val values = arrayOfNulls<String>(keys.size)
+        for (i in keys.indices) {
+            values[i] = map[keys[i]]
+        }
+        return values
     }
 
     /**
@@ -301,13 +310,13 @@ class CustomStudyDialog(private val collection: Collection, private val customSt
      * Gathers the final selection of tags and type of cards,
      * Generates the search screen for the custom study deck.
      */
-    override fun onSelectedTags(selectedTags: List<String>, indeterminateTags: List<String>, option: Int) {
+    override fun onSelectedTags(selectedTags: List<String>?, indeterminateTags: List<String>?, option: Int) {
         val sb = StringBuilder()
         when (option) {
             1 -> sb.append("is:new ")
             2 -> sb.append("is:due ")
         }
-        val arr: MutableList<String?> = ArrayList(selectedTags.size)
+        val arr: MutableList<String?> = ArrayList(selectedTags!!.size)
         if (selectedTags.isNotEmpty()) {
             for (tag in selectedTags) {
                 arr.add(String.format("tag:'%s'", tag))
@@ -341,14 +350,14 @@ class CustomStudyDialog(private val collection: Collection, private val customSt
                 dialogOptions.add(STUDY_RANDOM)
                 dialogOptions.add(STUDY_PREVIEW)
                 dialogOptions.add(STUDY_TAGS)
-                if (collection.sched?.totalNewForCurrentDeck() == 0) {
+                if (collection.sched.totalNewForCurrentDeck() == 0) {
                     // If no new cards we wont show CUSTOM_STUDY_NEW
                     dialogOptions.remove(STUDY_NEW)
                 }
                 return dialogOptions.toList()
             }
             LIMITS -> // Special custom study options to show when the daily study limit has been reached
-                return if (collection.sched?.newDue() != true && collection.sched?.revDue() != true) {
+                return if (collection.sched.newDue() != true && collection.sched.revDue() != true) {
                     listOf(STUDY_NEW, STUDY_REV, DECK_OPTIONS, MORE_OPTIONS)
                 } else {
                     if (collection.sched.newDue()) {
@@ -369,8 +378,8 @@ class CustomStudyDialog(private val collection: Collection, private val customSt
         get() {
             val res = AnkiDroidApp.getAppResources()
             return when (ContextMenuOption.fromInt(requireArguments().getInt("id"))) {
-                STUDY_NEW -> res.getString(R.string.custom_study_new_total_new, collection.sched?.totalNewForCurrentDeck())
-                STUDY_REV -> res.getString(R.string.custom_study_rev_total_rev, collection.sched?.totalRevForCurrentDeck())
+                STUDY_NEW -> res.getString(R.string.custom_study_new_total_new, collection.sched.totalNewForCurrentDeck())
+                STUDY_REV -> res.getString(R.string.custom_study_rev_total_rev, collection.sched.totalRevForCurrentDeck())
                 else -> ""
             }
         }
@@ -412,9 +421,9 @@ class CustomStudyDialog(private val collection: Collection, private val customSt
         val did = requireArguments().getLong("did")
 
         val decks = collection.decks
-        val deckToStudyName = decks?.get(did)?.getString("name")
+        val deckToStudyName = decks.get(did).getString("name")
         val customStudyDeck = resources.getString(R.string.custom_study_deck_name)
-        val cur = decks?.byName(customStudyDeck)
+        val cur = decks.byName(customStudyDeck)
         if (cur != null) {
             Timber.i("Found deck: '%s'", customStudyDeck)
             if (cur.isStd) {
@@ -424,7 +433,7 @@ class CustomStudyDialog(private val collection: Collection, private val customSt
             } else {
                 Timber.i("Emptying dynamic deck '%s' for custom study", customStudyDeck)
                 // safe to empty
-                collection.sched?.emptyDyn(cur.getLong("id"))
+                collection.sched.emptyDyn(cur.getLong("id"))
                 // reuse; don't delete as it may have children
                 dyn = cur
                 decks.select(cur.getLong("id"))
@@ -432,7 +441,7 @@ class CustomStudyDialog(private val collection: Collection, private val customSt
         } else {
             Timber.i("Creating Dynamic Deck '%s' for custom study", customStudyDeck)
             dyn = try {
-                decks!!.get(decks.newDyn(customStudyDeck))
+                decks.get(decks.newDyn(customStudyDeck))
             } catch (ex: DeckRenameException) {
                 showThemedToast(requireActivity(), ex.getLocalizedMessage(this.resources), true)
                 return
@@ -443,7 +452,7 @@ class CustomStudyDialog(private val collection: Collection, private val customSt
             // normally we wouldn't want to log this much, but we need to know how deep the corruption is to fix the
             // issue
             Timber.w("Invalid Dynamic Deck: %s", dyn)
-            AnkiDroidApp.sendExceptionReport("Custom Study Deck had no terms", "CustomStudyDialog - createCustomStudySession")
+            CrashReportService.sendExceptionReport("Custom Study Deck had no terms", "CustomStudyDialog - createCustomStudySession")
             showThemedToast(this.context, getString(R.string.custom_study_rebuild_deck_corrupt), false)
             return
         }
@@ -462,7 +471,7 @@ class CustomStudyDialog(private val collection: Collection, private val customSt
         // Rebuild the filtered deck
         Timber.i("Rebuilding Custom Study Deck")
         // PERF: Should be in background
-        collection.decks?.save(dyn)
+        collection.decks.save(dyn)
         TaskManager.launchCollectionTask(RebuildCram(), createCustomStudySessionListener())
 
         // Hide the dialogs
